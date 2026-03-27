@@ -1,12 +1,27 @@
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: aws-cli
+    image: amazon/aws-cli:latest
+    command: ["sleep"]
+    args: ["99d"]
+  - name: maven
+    image: maven:3.9.6-eclipse-temurin-17
+    command: ["sleep"]
+    args: ["99d"]
+'''
+        }
+    }
 
     environment {
-        // Thay đổi các thông số này theo AWS của bạn
         AWS_REGION = "ap-southeast-1"
         AWS_ACCOUNT = "187104821419"
         DOMAIN = "phongnd-artifacts"
-        REPO = "eight_seneca_common"
     }
 
     stages {
@@ -16,39 +31,51 @@ pipeline {
             }
         }
 
-        stage('Build & Auth CodeArtifact') {
+        stage('Get Auth Token') {
             steps {
-                script {
-                    // Lấy Token từ AWS và tạo file settings.xml tạm thời
-                    sh '''
-                        export CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --domain ${DOMAIN} --domain-owner ${AWS_ACCOUNT} --query authorizationToken --output text)
-
-                        echo "<settings>
-                                <servers>
-                                    <server>
-                                        <id>codeartifact</id>
-                                        <username>aws</username>
-                                        <password>${CODEARTIFACT_AUTH_TOKEN}</password>
-                                    </server>
-                                </servers>
-                              </settings>" > settings.xml
-                    '''
+                container('aws-cli') {
+                    script {
+                        // Lấy Token từ container aws-cli và lưu vào biến môi trường của Pipeline
+                        env.CODEARTIFACT_AUTH_TOKEN = sh(
+                            script: "aws codeartifact get-authorization-token --domain ${DOMAIN} --domain-owner ${AWS_ACCOUNT} --query authorizationToken --output text --region ${AWS_REGION}",
+                            returnStdout: true
+                        ).trim()
+                    }
                 }
             }
         }
 
-        stage('Deploy to CodeArtifact') {
+        stage('Build & Deploy to CodeArtifact') {
             steps {
-                // Chạy lệnh deploy sử dụng file settings.xml vừa tạo
-                sh 'mvn -s settings.xml clean deploy -DskipTests'
+                container('maven') {
+                    script {
+                        // Tạo file settings.xml và chạy lệnh deploy trong container maven
+                        sh """
+                            echo '<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                                            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                                            xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+                                <servers>
+                                    <server>
+                                        <id>codeartifact</id>
+                                        <username>aws</username>
+                                        <password>${env.CODEARTIFACT_AUTH_TOKEN}</password>
+                                    </server>
+                                </servers>
+                              </settings>' > settings.xml
+
+                            mvn -s settings.xml clean deploy -DskipTests
+                        """
+                    }
+                }
             }
         }
     }
 
     post {
         always {
-            // Xóa file chứa token sau khi xong để bảo mật
-            sh 'rm -f settings.xml'
+            container('maven') {
+                sh 'rm -f settings.xml'
+            }
         }
     }
 }
