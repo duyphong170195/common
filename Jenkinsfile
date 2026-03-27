@@ -11,7 +11,7 @@ spec:
     command: ["sleep"]
     args: ["99d"]
   - name: maven
-    image: maven:3.9.6-eclipse-temurin-17
+    image: maven:3.9.6-eclipse-temurin-21
     command: ["sleep"]
     args: ["99d"]
 '''
