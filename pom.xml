@@ -29,6 +29,18 @@
 	<properties>
 		<java.version>21</java.version>
 	</properties>
+	<distributionManagement>
+		<repository>
+			<id>codeartifact</id>
+			<name>codeartifact</name>
+			<url>https://phongnd-artifacts-187104821419.d.codeartifact.ap-southeast-1.amazonaws.com/maven/eight_seneca_common/</url>
+		</repository>
+		<snapshotRepository>
+			<id>codeartifact</id>
+			<name>codeartifact</name>
+			<url>https://phongnd-artifacts-187104821419.d.codeartifact.ap-southeast-1.amazonaws.com/maven/eight_seneca_common/</url>
+		</snapshotRepository>
+	</distributionManagement>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
