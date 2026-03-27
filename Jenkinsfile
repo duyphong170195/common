@@ -10,19 +10,6 @@ pipeline {
     }
 
     stages {
-        stage('Prepare AWS CLI') {
-            steps {
-                sh '''
-                    # Kiểm tra nếu chưa có aws cli thì cài nhanh
-                    if ! command -v aws &> /dev/null; then
-                        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-                        unzip -q awscliv2.zip
-                        ./aws/install --install-dir /home/jenkins/aws-cli --bin-dir /home/jenkins/bin
-                        export PATH=$PATH:/home/jenkins/bin
-                    fi
-                '''
-            }
-        }
         stage('Checkout') {
             steps {
                 checkout scm
